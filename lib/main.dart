@@ -21,6 +21,9 @@ void startTestFeed() {
         rul: 100 - timer.tick.toDouble(),
         anomaly: timer.tick % 7 == 0,
         timestamp: DateTime.now(),
+        anomalyReason: timer.tick % 7 == 0
+            ? 'RUL dropping rapidly with abnormal temperature pattern'
+            : 'All parameters within normal range',
       ),
     );
   });
