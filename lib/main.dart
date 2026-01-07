@@ -1,44 +1,43 @@
 import 'package:flutter/material.dart';
-import 'state/app_state.dart';
+import 'services/mqtt_service.dart';
+import 'screens/live_status_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'dart:async';
-import 'models/sensor_data.dart';
-
-final appState = AppState();
 
 void main() {
-  startTestFeed();
-  runApp(const IIoTApp());
-}
+  final mqttService = MqttService(
+    broker: '192.168.0.202', 
+    clientId: 'flutter_web_${DateTime.now().millisecondsSinceEpoch}',
+  );
 
-void startTestFeed() {
-  Timer.periodic(const Duration(seconds: 2), (timer) {
-    appState.update(
-      SensorData(
-        temperature: 20 + timer.tick % 5,
-        proximity: 300.0 + timer.tick,
-        light: 100 + timer.tick * 2,
-        rul: 100 - timer.tick.toDouble(),
-        anomaly: timer.tick % 7 == 0,
-        timestamp: DateTime.now(),
-        anomalyReason: timer.tick % 7 == 0
-            ? 'RUL dropping rapidly with abnormal temperature pattern'
-            : 'All parameters within normal range',
+  runApp(MaterialApp(
+    debugShowCheckedModeBanner: false,
+    // THEME CONFIGURATION
+    themeMode: ThemeMode.dark, // Force Dark Mode
+    darkTheme: ThemeData(
+      useMaterial3: true, // Ensures you're using the latest UI standards
+      brightness: Brightness.dark,
+      colorSchemeSeed: Colors.blueGrey,
+      scaffoldBackgroundColor: const Color(0xFF0F172A), 
+      
+      // FIXED: Changed CardTheme to CardThemeData
+      cardTheme: CardThemeData(
+        color: const Color(0xFF1E293B),
+        elevation: 4,
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       ),
-    );
-  });
-}
 
-class IIoTApp extends StatelessWidget {
-  const IIoTApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'IIoT Predictive Maintenance',
-      theme: ThemeData.dark(),
-      home: const DashboardScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1E293B),
+        centerTitle: true,
+        elevation: 0,
+        titleTextStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ),
+    home: DashboardScreen(mqttService: mqttService), 
+  ));
 }

@@ -1,14 +1,9 @@
-buildscript {
-    ext.kotlin_version = '1.6.10'
-    repositories {
-        google()
-        mavenCentral()
-    }
+// android/build.gradle
 
-    dependencies {
-        classpath 'com.android.tools.build:gradle:4.1.0'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
+plugins {
+    id "com.android.application" version "8.1.0" apply false
+    id "org.jetbrains.kotlin.android" version "1.8.22" apply false
+    id "dev.flutter.flutter-gradle-plugin" version "1.0.0" apply false
 }
 
 allprojects {
@@ -26,6 +21,6 @@ subprojects {
     project.evaluationDependsOn(':app')
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+tasks.register("clean", Delete) {
+    delete rootProject.layout.buildDirectory
 }

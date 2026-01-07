@@ -6,9 +6,14 @@ import '../services/sensor_data_service.dart';
 import '../widgets/system_status_card.dart';
 import '../widgets/realtime_line_chart.dart';
 import '../widgets/anomaly_explanation_card.dart';
+import '../screens/live_status_screen.dart';
+import '../services/mqtt_service.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  // Add the service as a required parameter
+  final MqttService mqttService;
+
+  const DashboardScreen({super.key, required this.mqttService});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -57,6 +62,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     rul: data.rul,
                     anomalyDetected: data.anomaly,
                   ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.show_chart),
+                    label: const Text('Open Live Status'),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LiveStatusScreen(
+                              mqttService: widget.mqttService), // Fixed!
+                        ),
+                      );
+                    },
+                  ),
+
                   const SizedBox(height: 16),
                   AnomalyExplanationCard(data: data),
                   const SizedBox(height: 16),

@@ -33,8 +33,8 @@ class RealtimeLineChart extends StatelessWidget {
               height: 180,
               child: LineChart(
                 LineChartData(
-                  gridData: FlGridData(show: false),
-                  titlesData: FlTitlesData(show: false),
+                  gridData: const FlGridData(show: false),
+                  titlesData: const FlTitlesData(show: false),
                   borderData: FlBorderData(show: false),
                   lineBarsData: [
                     LineChartBarData(
@@ -51,7 +51,7 @@ class RealtimeLineChart extends StatelessWidget {
                       isCurved: true,
                       color: color,
                       barWidth: 3,
-                      dotData: FlDotData(show: false),
+                      dotData: const FlDotData(show: false),
                     ),
                   ],
                 ),
