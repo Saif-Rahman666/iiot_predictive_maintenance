@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/mqtt_service.dart';
 import '../models/prediction.dart';
+import '../widgets/realtime_line_chart.dart'; // Import your graph widget
 
 class LiveStatusScreen extends StatefulWidget {
   final MqttService mqttService;
-
   const LiveStatusScreen({super.key, required this.mqttService});
 
   @override
@@ -13,6 +13,8 @@ class LiveStatusScreen extends StatefulWidget {
 
 class _LiveStatusScreenState extends State<LiveStatusScreen> {
   Future<bool>? _connectionFuture;
+  final List<double> _healthHistory = [];
+  static const int maxPoints = 30;
 
   @override
   void initState() {
@@ -44,63 +46,70 @@ class _LiveStatusScreenState extends State<LiveStatusScreen> {
                   const Icon(Icons.error_outline, color: Colors.red, size: 60),
                   const SizedBox(height: 10),
                   Text("❌ Cannot reach Pi at ${widget.mqttService.broker}"),
-                  const Text("Check if Mosquitto and the IP are correct."),
                 ],
               ),
             );
           }
 
           return StreamBuilder<Map<String, dynamic>>(
-            stream: widget.mqttService.subscribePrediction(1),
+            stream: widget.mqttService.subscribeStatus(1), // Ensure this matches Pi topic
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
-                return const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 15),
-                      Text("Connected! Waiting for ML data from Pi..."),
-                    ],
-                  ),
-                );
+                return const Center(child: CircularProgressIndicator());
               }
 
               final prediction = Prediction.fromJson(snapshot.data!);
+              
+              // Logic: Red if proximity > 3000
+              bool isBlocked = prediction.proxRaw > 3000;
 
-              return Padding(
+              // Update Graph History
+              _healthHistory.add(prediction.healthIndex);
+              if (_healthHistory.length > maxPoints) _healthHistory.removeAt(0);
+
+              return SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
-                child: Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  children: [
+                    // --- YOUR ORIGINAL CARD VIEW ---
+                    Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Engine Unit: ${prediction.unit}', 
-                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                            const Icon(Icons.settings_input_component, color: Colors.blueGrey),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Engine Unit: ${prediction.unit}', 
+                                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                Icon(Icons.settings_input_component, 
+                                     color: isBlocked ? Colors.red : Colors.blueGrey),
+                              ],
+                            ),
+                            const Divider(height: 30),
+                            _buildStatusRow('Health Index', "${(prediction.healthIndex * 100).toStringAsFixed(1)}%"),
+                            _buildStatusRow('Predicted RUL', '${prediction.predictedRul ?? "..."} Cycles'),
+                            _buildStatusRow('Proximity (I2C)', '${prediction.proxRaw}'), // NEW
+                            _buildStatusRow('Ambient Light', '${prediction.lux.toStringAsFixed(1)} Lux'), // NEW
+                            const SizedBox(height: 25),
+                            _buildRiskBadge(prediction.risk),
                           ],
                         ),
-                        const Divider(height: 30),
-                        _buildStatusRow('Health Index', "${(prediction.healthIndex * 100).toStringAsFixed(1)}%"),
-                        _buildStatusRow('Predicted RUL', '${prediction.predictedRul ?? "Calculating..."} Cycles'),
-                        const SizedBox(height: 25),
-                        _buildRiskBadge(prediction.risk),
-                        const SizedBox(height: 20),
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: Text('Last Scan: ${prediction.timestamp.split('T').last.substring(0, 8)}', 
-                              style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                    
+                    const SizedBox(height: 20),
+
+                    // --- NEW ADDITIONAL GRAPH ---
+                    RealtimeLineChart(
+                      values: List.from(_healthHistory),
+                      title: 'Real-time Health Trend',
+                      color: isBlocked ? Colors.red : Colors.blue,
+                    ),
+                  ],
                 ),
               );
             },
@@ -112,11 +121,11 @@ class _LiveStatusScreenState extends State<LiveStatusScreen> {
 
   Widget _buildStatusRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 16, color: Colors.black54)),
+          Text(label, style: const TextStyle(fontSize: 16, color: Colors.white)),
           Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         ],
       ),
@@ -124,10 +133,7 @@ class _LiveStatusScreenState extends State<LiveStatusScreen> {
   }
 
   Widget _buildRiskBadge(String risk) {
-    Color color = Colors.green;
-    if (risk == 'CRITICAL') color = Colors.red;
-    if (risk == 'HIGH') color = Colors.orange;
-
+    Color color = (risk == 'CRITICAL') ? Colors.red : Colors.green;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12),

@@ -5,7 +5,9 @@ import 'screens/dashboard_screen.dart';
 
 void main() {
   final mqttService = MqttService(
-    broker: '192.168.0.202', 
+    // MQTT CONFIGURATION
+    //broker: '172.20.10.5',
+    broker: '192.168.0.202',
     clientId: 'flutter_web_${DateTime.now().millisecondsSinceEpoch}',
   );
 
@@ -17,8 +19,8 @@ void main() {
       useMaterial3: true, // Ensures you're using the latest UI standards
       brightness: Brightness.dark,
       colorSchemeSeed: Colors.blueGrey,
-      scaffoldBackgroundColor: const Color(0xFF0F172A), 
-      
+      scaffoldBackgroundColor: const Color(0xFF0F172A),
+
       // FIXED: Changed CardTheme to CardThemeData
       cardTheme: CardThemeData(
         color: const Color(0xFF1E293B),
@@ -38,6 +40,6 @@ void main() {
         ),
       ),
     ),
-    home: DashboardScreen(mqttService: mqttService), 
+    home: DashboardScreen(mqttService: mqttService),
   ));
 }
