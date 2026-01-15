@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/sensor_data.dart';
+import '../models/prediction.dart';
+
 
 class AnomalyExplanationCard extends StatelessWidget {
-  final SensorData data;
+  final Prediction data;
 
   const AnomalyExplanationCard({super.key, required this.data});
 
@@ -10,7 +11,7 @@ class AnomalyExplanationCard extends StatelessWidget {
     final reasons = <String>[];
 
     // Check for Physical Blockage (IR Sensor)
-    if (data.irStatus == "Blocked") {
+    if (data.risk == "CRITICAL" && data.proxRaw > 3000) {
       reasons.add('Physical Obstruction Detected (IR Sensor Blocked)');
     }
 
@@ -19,8 +20,11 @@ class AnomalyExplanationCard extends StatelessWidget {
       reasons.add('Critical Health Index Decline (Edge-AI Prediction)');
     }
 
-    if (data.rul < 20) {
-      reasons.add('Remaining Useful Life is critically low (${data.rul.toStringAsFixed(0)} cycles)');
+    if (data.predictedRul != null && data.predictedRul! < 20) {
+      reasons.add('Remaining Useful Life is critically low (${data.predictedRul} cycles)');
+    }
+    if (data.lux < 1.0) {
+      reasons.add('Ambient Light Critical: Potential Engine Room Lighting Failure');
     }
 
     if (reasons.isEmpty) {
@@ -32,7 +36,9 @@ class AnomalyExplanationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!data.anomaly && data.irStatus != "Blocked") return const SizedBox.shrink();
+    if (data.risk != "CRITICAL" && (data.predictedRul == null || data.predictedRul! > 30)) {
+      return const SizedBox.shrink();
+    }
 
     final reasons = _buildReasons();
 

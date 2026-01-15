@@ -1,7 +1,7 @@
 class SensorData {
   final double temperature;
-  final double proximity; // This will map to 'ir_raw'
-  final String irStatus;  // "Blocked" or "Clear"
+  final double proximity; 
+  final String irStatus;  
   final double healthIndex; 
   final double rul;
   final bool anomaly;

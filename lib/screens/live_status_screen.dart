@@ -95,7 +95,7 @@ class _LiveStatusScreenState extends State<LiveStatusScreen> {
                             _buildStatusRow('Proximity (I2C)', '${prediction.proxRaw}'), // NEW
                             _buildStatusRow('Ambient Light', '${prediction.lux.toStringAsFixed(1)} Lux'), // NEW
                             const SizedBox(height: 25),
-                            _buildRiskBadge(prediction.risk),
+                            _buildRiskBadge(prediction.predictedRul != null && prediction.predictedRul! < 50 ? 'CRITICAL' : 'STABLE'),
                           ],
                         ),
                       ),

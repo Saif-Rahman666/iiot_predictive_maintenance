@@ -14,8 +14,8 @@ class MqttService {
     client.keepAlivePeriod = 20;
     client.websocketProtocols = MqttClientConstants.protocolsSingleDefault;
 
-    client.onDisconnected = () => print("❌ MQTT: Disconnected");
-    client.onConnected = () => print("✅ MQTT: Connected to Pi");
+    client.onDisconnected = () => print(" MQTT: Disconnected");
+    client.onConnected = () => print(" MQTT: Connected to Pi");
   }
 
   Future<bool> connect() async {
@@ -29,7 +29,7 @@ class MqttService {
       await client.connect();
       return client.connectionStatus?.state == MqttConnectionState.connected;
     } catch (e) {
-      print("❌ MQTT: Connection failed: $e");
+      print(" MQTT: Connection failed: $e");
       return false;
     }
   }
@@ -51,12 +51,12 @@ class MqttService {
       try {
         final Map<String, dynamic> data = json.decode(payload);
         
-        // FIXED: Using ?? (null-coalescing) to provide default values prevents TypeError
+        
         return {
           'unit': data['unit'] ?? 1,
           'health_index': (data['health_index'] ?? 0.0).toDouble(),
-          'predicted_rul': data['rul'] ?? 0,
-          'prox_raw': data['prox_raw'] ?? 0, // Default to 0 if null
+          'rul': data['rul'] ?? 0,
+          'prox_raw': data['prox_raw'] ?? 0, 
           'lux': (data['lux'] ?? 0.0).toDouble(),
           'ir_status': data['ir_status'] ?? "Clear",
           'risk': (data['health_index'] ?? 1.0) < 0.3 ? "CRITICAL" : "STABLE",

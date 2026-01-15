@@ -4,8 +4,8 @@ class Prediction {
   final int? predictedRul;
   final String risk;
   final String timestamp;
-  final int proxRaw; // Real I2C value
-  final double lux;  // Real Light v
+  final int proxRaw; 
+  final double lux;  
 
   Prediction({
     required this.unit,
@@ -19,14 +19,13 @@ class Prediction {
 
   factory Prediction.fromJson(Map<String, dynamic> json) {
     return Prediction(
-    unit: json['unit'],
-    healthIndex: (json['health_index'] as num).toDouble(),
-    predictedRul: (json['rul'] as num?)?.toInt() ?? 0, 
-    risk: json['ir_status'] ?? 'CLEAR', 
-    timestamp: DateTime.now().toIso8601String(),
-    
-    proxRaw: json['prox_raw'] ?? 0,
-    lux: (json['lux'] as num?)?.toDouble() ?? 0.0,
-  );
+      unit: json['unit'] ?? 1,
+      healthIndex: (json['health_index'] as num?)?.toDouble() ?? 0.0,
+      predictedRul: json['rul'] as int?,
+      risk: json['ir_status'] ?? 'CLEAR', 
+      timestamp: DateTime.now().toIso8601String(),
+      proxRaw: json['prox_raw'] ?? 0,
+      lux: (json['lux'] as num?)?.toDouble() ?? 0.0,
+    );
   }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/sensor_data.dart';
+import '../models/prediction.dart';
 import '../widgets/sensor_card.dart';
 import '../widgets/status_badge.dart';
 import '../services/sensor_data_service.dart';
@@ -20,8 +20,8 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final SensorDataService _service = SensorDataService();
-  final List<double> _tempHistory = [];
+  Future<bool>? _connectionFuture;
+  final List<double> _healthHistory = [];
   final List<double> _rulHistory = [];
 
   static const int maxPoints = 30;
@@ -29,107 +29,150 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _service.start();
+    _connectionFuture = widget.mqttService.connect();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('System Dashboard')),
-      body: StreamBuilder<SensorData>(
-        stream: _service.stream,
+      body: FutureBuilder<bool>(
+        future: _connectionFuture,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: Text('Waiting for data...'));
           }
-
-          final data = snapshot.data!;
-          _tempHistory.add(data.temperature);
-          _rulHistory.add(data.rul);
-
-          if (_tempHistory.length > maxPoints) {
-            _tempHistory.removeAt(0);
-            _rulHistory.removeAt(0);
-          }
-
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: SingleChildScrollView(
+          if (snapshot.data == false) {
+            return Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  StatusBadge(
-                    rul: data.rul,
-                    anomalyDetected: data.anomaly,
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.show_chart),
-                    label: const Text('Open Live Status'),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => LiveStatusScreen(
-                              mqttService: widget.mqttService), // Fixed!
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 16),
-                  AnomalyExplanationCard(data: data),
-                  const SizedBox(height: 16),
-                  SystemStatusCard(
-                    connected: true, // later from MQTT
-                    modelLoaded: true, // later from TFLite
-                    anomalyDetected: data.anomaly,
-                  ),
-                  const SizedBox(height: 16),
-                  const SizedBox(height: 16),
-                  RealtimeLineChart(
-                    values: _tempHistory,
-                    title: 'Temperature Trend (°C)',
-                    color: Colors.orange,
-                  ),
-                  const SizedBox(height: 16),
-                  RealtimeLineChart(
-                    values: _rulHistory,
-                    title: 'Remaining Useful Life Trend (hrs)',
-                    color: Colors.blue,
-                  ),
-                  SensorCard(
-                    title: 'Temperature',
-                    value: '${data.temperature.toStringAsFixed(1)} °C',
-                    icon: Icons.thermostat,
-                  ),
-                  SensorCard(
-                    title: 'Proximity',
-                    value: data.proximity.toStringAsFixed(0),
-                    icon: Icons.sensors,
-                  ),
-                  SensorCard(
-                    title: 'Light',
-                    value: '${data.light.toStringAsFixed(1)} lux',
-                    icon: Icons.light_mode,
-                  ),
-                  SensorCard(
-                    title: 'RUL',
-                    value: '${data.rul.toStringAsFixed(0)} hrs',
-                    icon: Icons.timelapse,
-                  ),
+                  const Icon(Icons.error_outline, color: Colors.red, size: 60),
+                  const SizedBox(height: 10),
+                  Text("❌ Cannot reach Pi at ${widget.mqttService.broker}"),
                 ],
               ),
-            ),
+            );
+          }
+
+          return StreamBuilder<Map<String, dynamic>>(
+            stream: widget.mqttService.subscribeStatus(1),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: Text('Listening for Edge Data...'));
+              }
+
+              final prediction = Prediction.fromJson(snapshot.data!);
+              _healthHistory.add(prediction.healthIndex);
+              if (prediction.predictedRul != null) {
+                _rulHistory.add(prediction.predictedRul!.toDouble());
+              }
+
+              if (_healthHistory.length > maxPoints) {
+                _healthHistory.removeAt(0);
+                _rulHistory.removeAt(0);
+              }
+
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      StatusBadge(
+                        rul: (prediction.predictedRul ?? 0).toDouble(),
+                        anomalyDetected: prediction.risk == "CRITICAL",
+                      ),
+                      const SizedBox(height: 12),
+
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.show_chart),
+                        label: const Text('Open Live Status'),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LiveStatusScreen(
+                                  mqttService: widget.mqttService), // Fixed!
+                            ),
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+                      AnomalyExplanationCard(data: prediction),
+                      const SizedBox(height: 16),
+                      SystemStatusCard(
+                        connected: true, // later from MQTT
+                        modelLoaded: true, // later from TFLite
+                        anomalyDetected: prediction.risk == "CRITICAL",
+                      ),
+                      const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                      RealtimeLineChart(
+                        values: List.from(_healthHistory),
+                        title: 'Health Index Trend (%)',
+                        color: prediction.risk == "CRITICAL"
+                            ? Colors.red
+                            : Colors.green,
+                      ),
+                      const SizedBox(height: 16),
+                      RealtimeLineChart(
+                        values: _rulHistory,
+                        title: 'Remaining Useful Life Trend (hrs)',
+                        color: Colors.blue,
+                      ),
+                      const SizedBox(height: 16),
+                      //live sensor data cards
+                      GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
+                        children: [
+                          SensorCard(
+                            title: 'Proximity',
+                            value: '${prediction.proxRaw}',
+                            icon: Icons.sensors,
+                          ),
+                          SensorCard(
+                            title: 'Light',
+                            value: '${prediction.lux.toStringAsFixed(1)} lux',
+                            icon: Icons.light_mode,
+                            color: prediction.lux < 1.0 ? Colors.red : Colors.blue,
+                          ),
+                          SensorCard(
+                            title: 'Machine Health Index',
+                            value:
+                                '${(prediction.healthIndex * 100).toStringAsFixed(1)}%',
+                            icon: Icons.favorite,
+                          ),
+                          SensorCard(
+                            title: 'Cycles to Failure',
+                            value: '${prediction.predictedRul ?? "..."}',
+                            icon: Icons.autorenew,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => LiveStatusScreen(
+                                  mqttService: widget.mqttService)),
+                        ),
+                        child: const Text("View Detailed Real-time Graphs"),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _service.dispose();
-    super.dispose();
   }
 }
