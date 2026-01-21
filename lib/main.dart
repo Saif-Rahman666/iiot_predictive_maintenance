@@ -6,8 +6,8 @@ import 'screens/dashboard_screen.dart';
 void main() {
   final mqttService = MqttService(
     // MQTT CONFIGURATION
-    //broker: '172.20.10.5',
-    broker: '192.168.0.202',
+    broker: '172.20.10.5',
+    //broker: '192.168.0.202',
     clientId: 'flutter_web_${DateTime.now().millisecondsSinceEpoch}',
   );
 

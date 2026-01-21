@@ -39,7 +39,7 @@ class SensorCard extends StatelessWidget {
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: color == Colors.red ? Colors.red : Colors.black),
+                  color: color == Colors.red ? Colors.red : Colors.white),
             ),
           ],
         ),
